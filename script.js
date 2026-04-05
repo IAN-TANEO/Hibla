@@ -1,14 +1,3 @@
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-    apiKey: "AIzaSyCzk4KJNz-_M0mHO_GrbfR348locN4zD8c",
-    authDomain: "confession-9929a.firebaseapp.com",
-    projectId: "confession-9929a",
-    storageBucket: "confession-9929a.firebasestorage.app",
-    messagingSenderId: "1053212024561",
-    appId: "1:1053212024561:web:33623318157d0b284dd350",
-    measurementId: "G-YDWZ88HEBT"
-};
-
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -437,3 +426,40 @@ window.addEventListener('click', (e) => {
     if (Date.now() - modalOpenTime < 300) return;
     if (!e.target.closest('.glass-panel') && !e.target.closest('.thought-dot') && !e.target.closest('.quote-banner')) closeModals();
 });
+
+// --- IMPACTFUL LANDING LOGIC ---
+function initLanding() {
+    const screen = document.getElementById('landing-screen');
+    const welcome = document.getElementById('landing-welcome');
+    const title = document.getElementById('landing-title');
+
+    if (!screen) return;
+
+    // Phase 1: Show "Welcome To"
+    setTimeout(() => {
+        welcome.classList.add('visible');
+    }, 500);
+
+    // Phase 2: Fade "Welcome To", Show "HIBLA"
+    setTimeout(() => {
+        welcome.classList.add('fading');
+        setTimeout(() => {
+            welcome.style.display = 'none';
+            title.style.display = 'block';
+            setTimeout(() => {
+                title.classList.add('visible');
+            }, 50);
+        }, 1000);
+    }, 2500);
+
+    // Phase 3: Reveal Map
+    setTimeout(() => {
+        screen.classList.add('exit');
+        setTimeout(() => {
+            screen.remove();
+        }, 1500);
+    }, 5500);
+}
+
+// Start everything
+initLanding();

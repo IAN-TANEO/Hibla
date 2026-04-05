@@ -437,3 +437,98 @@ textarea {
 @keyframes rippleEffect {
     to { transform: translate(-50%, -50%) scale(4); opacity: 0; }
 }
+
+/* IMPACTFUL LANDING SCREEN */
+#landing-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: var(--bg-paper);
+    background-image: 
+        radial-gradient(rgba(180, 160, 140, 0.15) 1.2px, transparent 1.2px),
+        linear-gradient(115deg, transparent 40%, var(--relic-crack) 40.1%, var(--relic-crack) 40.3%, transparent 40.4%),
+        linear-gradient(240deg, transparent 65%, var(--relic-crack) 65.1%, var(--relic-crack) 65.3%, transparent 65.4%);
+    background-size: 60px 60px, 100% 100%, 100% 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 1.5s ease-in-out;
+}
+
+.landing-vignette {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle, transparent 30%, rgba(60, 40, 30, 0.45) 100%);
+    mix-blend-mode: multiply;
+    pointer-events: none;
+}
+
+.landing-content {
+    text-align: center;
+    position: relative;
+    z-index: 10001;
+}
+
+.landing-text {
+    margin: 0;
+    opacity: 0;
+    color: var(--text-header);
+    transition: all 1s ease-in-out;
+    filter: blur(5px);
+}
+
+#landing-welcome {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+}
+
+#landing-title {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: clamp(4rem, 15vw, 10rem);
+    letter-spacing: 0.5em;
+    margin-right: -0.5em; /* Compensate for horizontal letter-spacing */
+    color: #433328;
+    text-shadow: 0 0 40px rgba(180, 160, 140, 0.3);
+    display: none; /* Controlled via script */
+}
+
+/* RESPONSIVE HIBLA TOWER FOR MOBILE */
+@media (max-width: 768px) {
+    #landing-title {
+        display: none; /* Still hidden initially */
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        letter-spacing: 0;
+        margin-right: 0;
+        line-height: 1.1;
+        /* Special vertical stacking trick */
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        letter-spacing: 0.2em;
+    }
+}
+
+/* Specific Animation States */
+.landing-text.visible {
+    opacity: 1 !important;
+    filter: blur(0) !important;
+}
+
+.landing-text.fading {
+    opacity: 0 !important;
+    filter: blur(15px) !important;
+    transform: scale(0.9) translate(-50%, -50%) !important;
+}
+
+#landing-screen.exit {
+    opacity: 0 !important;
+    pointer-events: none;
+}
