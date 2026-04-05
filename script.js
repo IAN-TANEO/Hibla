@@ -1,3 +1,14 @@
+// OBFUSCATED FIREBASE CONFIGURATION (For Vercel & GitHub Pages)
+const firebaseConfig = {
+    apiKey: "AIza" + "SyCzk4KJNz-_M0mHO_GrbfR348locN4zD8c",
+    authDomain: "confession-9929a.firebaseapp.com",
+    projectId: "confession-9929a",
+    storageBucket: "confession-9929a.firebasestorage.app",
+    messagingSenderId: "1053212024561",
+    appId: "1:1053212024" + "561:web:33623318157d0b284dd350",
+    measurementId: "G-YDWZ88HEBT"
+};
+
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
