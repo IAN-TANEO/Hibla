@@ -28,6 +28,9 @@ let mapX = (window.innerWidth - 8000) / 2;
 let mapY = (window.innerHeight - 8000) / 2;
 let isDragging = false;
 let startX, startY;
+let mapScale = 1.0;
+let evCache = [];
+let prevDiff = -1;
 let initialMapX, initialMapY;
 let modalOpenTime = 0;
 
@@ -102,7 +105,7 @@ const GLOBAL_QUOTES = [
 ];
 
 function updateMapTransform() {
-    map.style.transform = `translate(${mapX}px, ${mapY}px)`;
+    map.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
     updateNearbyCue();
 }
 updateMapTransform();
@@ -204,14 +207,35 @@ viewport.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.thought-dot') || e.target.closest('.quote-banner')) {
         return;
     }
-    isDragging = true;
-    startX = e.clientX; startY = e.clientY;
-    initialMapX = mapX; initialMapY = mapY;
-    viewport.setPointerCapture(e.pointerId);
-    spawnRipple(e.clientX, e.clientY);
+    
+    // PINCH TRACKING
+    evCache.push(e);
+
+    if (evCache.length === 1) {
+        isDragging = true;
+        startX = e.clientX; startY = e.clientY;
+        initialMapX = mapX; initialMapY = mapY;
+        viewport.setPointerCapture(e.pointerId);
+        spawnRipple(e.clientX, e.clientY);
+    }
 });
 
 viewport.addEventListener('pointermove', (e) => {
+    // 1. PINCH ZOOM LOGIC
+    const index = evCache.findIndex(p => p.pointerId === e.pointerId);
+    if (index !== -1) evCache[index] = e;
+
+    if (evCache.length === 2) {
+        const curDiff = Math.sqrt((evCache[0].clientX - evCache[1].clientX) ** 2 + (evCache[0].clientY - evCache[1].clientY) ** 2);
+        if (prevDiff > 0) {
+            const zoomAmount = (curDiff - prevDiff) * 0.005;
+            adjustZoom(zoomAmount, (evCache[0].clientX + evCache[1].clientX) / 2, (evCache[0].clientY + evCache[1].clientY) / 2);
+        }
+        prevDiff = curDiff;
+        return;
+    }
+
+    // 2. DRAG LOGIC
     if (!isDragging) return;
     mapX = initialMapX + (e.clientX - startX);
     mapY = initialMapY + (e.clientY - startY);
@@ -219,6 +243,10 @@ viewport.addEventListener('pointermove', (e) => {
 });
 
 viewport.addEventListener('pointerup', (e) => {
+    const index = evCache.findIndex(p => p.pointerId === e.pointerId);
+    if (index !== -1) evCache.splice(index, 1);
+    if (evCache.length < 2) prevDiff = -1;
+
     if (!isDragging) return;
     isDragging = false;
     viewport.releasePointerCapture(e.pointerId);
@@ -228,6 +256,35 @@ viewport.addEventListener('pointerup', (e) => {
         handleTap(e.clientX, e.clientY);
     }
 });
+
+viewport.addEventListener('pointercancel', (e) => {
+    const index = evCache.findIndex(p => p.pointerId === e.pointerId);
+    if (index !== -1) evCache.splice(index, 1);
+    if (evCache.length < 2) prevDiff = -1;
+    isDragging = false;
+});
+
+// WHEEL ZOOM
+viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomAmount = -e.deltaY * 0.001;
+    adjustZoom(zoomAmount, e.clientX, e.clientY);
+}, { passive: false });
+
+function adjustZoom(amount, zoomX, zoomY) {
+    const prevScale = mapScale;
+    mapScale = Math.min(Math.max(0.2, mapScale + amount), 2.5);
+
+    // Zoom toward specific point
+    const rect = map.getBoundingClientRect();
+    const mapMouseX = (zoomX - rect.left) / prevScale;
+    const mapMouseY = (zoomY - rect.top) / prevScale;
+
+    mapX -= mapMouseX * (mapScale - prevScale);
+    mapY -= mapMouseY * (mapScale - prevScale);
+
+    updateMapTransform();
+}
 
 function handleTap(clientX, clientY) {
     const now = Date.now();

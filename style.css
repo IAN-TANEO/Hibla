@@ -66,6 +66,7 @@ body::after {
     position: absolute;
     transform-origin: 0 0;
     will-change: transform;
+    transition: transform 0.1s ease-out;
     z-index: 1;
 }
 
