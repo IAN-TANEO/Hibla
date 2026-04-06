@@ -45,6 +45,16 @@ let currentAudio = null; // Active thought audio
 let previewAudio = null; // Search preview audio
 let currentPlayOverlay = null; // UI tracking for preview button
 
+// --- INERTIA / MOMENTUM ---
+let velocityX = 0;
+let velocityY = 0;
+let lastMoveTime = 0;
+let lastClientX = 0;
+let lastClientY = 0;
+let inertiaFrame = null;
+const FRICTION = 0.95;
+const INERTIA_THRESHOLD = 0.5;
+
 const PLAY_ICON = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
 const PAUSE_ICON = `<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
 
@@ -104,9 +114,16 @@ const GLOBAL_QUOTES = [
     { id: 'h8o', cat: 'hibla', x: 4200, y: 3000, text: "Every thread belongs to someone.", author: "Hibla" }
 ];
 
+let lastCueUpdateTime = 0;
 function updateMapTransform() {
     map.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
-    updateNearbyCue();
+    
+    // Performance: Throttle the heavy distance calculations
+    const now = Date.now();
+    if (now - lastCueUpdateTime > 150) {
+        updateNearbyCue();
+        lastCueUpdateTime = now;
+    }
 }
 updateMapTransform();
 
@@ -183,8 +200,9 @@ function createString(p1, p2) {
 
 function updateNearbyCue() {
     let minSourceDist = Infinity;
-    const centerX = -mapX + (window.innerWidth / 2);
-    const centerY = -mapY + (window.innerHeight / 2);
+    // Account for scale to find the TRUE map center
+    const centerX = (window.innerWidth / 2 - mapX) / mapScale;
+    const centerY = (window.innerHeight / 2 - mapY) / mapScale;
     GLOBAL_QUOTES.forEach(q => {
         const dist = Math.sqrt((q.x - centerX) ** 2 + (q.y - centerY) ** 2);
         if (dist < minSourceDist) minSourceDist = dist;
@@ -214,9 +232,15 @@ viewport.addEventListener('pointerdown', (e) => {
     if (evCache.length === 1) {
         isDragging = true;
         startX = e.clientX; startY = e.clientY;
+        lastClientX = e.clientX; lastClientY = e.clientY;
+        lastMoveTime = Date.now();
         initialMapX = mapX; initialMapY = mapY;
         viewport.setPointerCapture(e.pointerId);
         spawnRipple(e.clientX, e.clientY);
+        
+        // INTERRUPT INERTIA
+        if (inertiaFrame) cancelAnimationFrame(inertiaFrame);
+        velocityX = 0; velocityY = 0;
     }
 });
 
@@ -228,8 +252,8 @@ viewport.addEventListener('pointermove', (e) => {
     if (evCache.length === 2) {
         const curDiff = Math.sqrt((evCache[0].clientX - evCache[1].clientX) ** 2 + (evCache[0].clientY - evCache[1].clientY) ** 2);
         if (prevDiff > 0) {
-            const zoomAmount = (curDiff - prevDiff) * 0.005;
-            adjustZoom(zoomAmount, (evCache[0].clientX + evCache[1].clientX) / 2, (evCache[0].clientY + evCache[1].clientY) / 2);
+            const zoomRatio = curDiff / prevDiff;
+            adjustZoom(zoomRatio, (evCache[0].clientX + evCache[1].clientX) / 2, (evCache[0].clientY + evCache[1].clientY) / 2);
         }
         prevDiff = curDiff;
         return;
@@ -237,6 +261,18 @@ viewport.addEventListener('pointermove', (e) => {
 
     // 2. DRAG LOGIC
     if (!isDragging) return;
+
+    const now = Date.now();
+    const dt = now - lastMoveTime;
+    if (dt > 10) {
+        // Measure velocity in pixels per frame (assuming ~60fps/16ms)
+        velocityX = (e.clientX - lastClientX);
+        velocityY = (e.clientY - lastClientY);
+        lastClientX = e.clientX;
+        lastClientY = e.clientY;
+        lastMoveTime = now;
+    }
+
     mapX = initialMapX + (e.clientX - startX);
     mapY = initialMapY + (e.clientY - startY);
     updateMapTransform();
@@ -250,6 +286,12 @@ viewport.addEventListener('pointerup', (e) => {
     if (!isDragging) return;
     isDragging = false;
     viewport.releasePointerCapture(e.pointerId);
+    
+    // START INERTIA if flick is fast enough
+    if (Math.abs(velocityX) > INERTIA_THRESHOLD || Math.abs(velocityY) > INERTIA_THRESHOLD) {
+        startInertia();
+    }
+
     const dx = Math.abs(e.clientX - startX);
     const dy = Math.abs(e.clientY - startY);
     if (dx < CLICK_DEADZONE && dy < CLICK_DEADZONE) {
@@ -264,26 +306,58 @@ viewport.addEventListener('pointercancel', (e) => {
     isDragging = false;
 });
 
-// WHEEL ZOOM
+// WHEEL ZOOM: Multiplicative for consistent feel
 viewport.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const zoomAmount = -e.deltaY * 0.001;
-    adjustZoom(zoomAmount, e.clientX, e.clientY);
+    const zoomRatio = e.deltaY < 0 ? 1.05 : 0.95;
+    adjustZoom(zoomRatio, e.clientX, e.clientY);
 }, { passive: false });
 
-function adjustZoom(amount, zoomX, zoomY) {
+function adjustZoom(ratio, zoomX, zoomY) {
+    if (inertiaFrame) cancelAnimationFrame(inertiaFrame);
     const prevScale = mapScale;
-    mapScale = Math.min(Math.max(0.2, mapScale + amount), 2.5);
+    
+    // Multiplicative zoom: maintains constant sensitivity regardless of scale
+    mapScale = Math.min(Math.max(0.15, mapScale * ratio), 1.0);
 
-    // Zoom toward specific point
-    const rect = map.getBoundingClientRect();
-    const mapMouseX = (zoomX - rect.left) / prevScale;
-    const mapMouseY = (zoomY - rect.top) / prevScale;
+    if (prevScale === mapScale) return;
 
-    mapX -= mapMouseX * (mapScale - prevScale);
-    mapY -= mapMouseY * (mapScale - prevScale);
+    // Stable Pivot Calculation (avoids "jumping to left")
+    // Map coordinate under the zoom focus point
+    const mapPointX = (zoomX - mapX) / prevScale;
+    const mapPointY = (zoomY - mapY) / prevScale;
+
+    mapX = zoomX - mapPointX * mapScale;
+    mapY = zoomY - mapPointY * mapScale;
 
     updateMapTransform();
+}
+
+function startInertia() {
+    if (inertiaFrame) cancelAnimationFrame(inertiaFrame);
+    inertiaFrame = requestAnimationFrame(applyInertia);
+}
+
+function applyInertia() {
+    // Only run if user is not actively dragging
+    if (!isDragging) {
+        mapX += velocityX;
+        mapY += velocityY;
+        
+        // Friction decay
+        velocityX *= FRICTION;
+        velocityY *= FRICTION;
+        
+        updateMapTransform();
+
+        // Stop if velocity is negligible
+        if (Math.abs(velocityX) > 0.05 || Math.abs(velocityY) > 0.05) {
+            inertiaFrame = requestAnimationFrame(applyInertia);
+        } else {
+            velocityX = 0; velocityY = 0;
+            inertiaFrame = null;
+        }
+    }
 }
 
 function handleTap(clientX, clientY) {
