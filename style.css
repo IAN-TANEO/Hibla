@@ -173,10 +173,14 @@ body::after {
 
 /* Scrollable container for text inside the card */
 .thought-scroll-container {
-    flex-grow: 1;
+    width: 100%;
+    max-height: 350px; /* Constrained height to force scrolling */
+    min-height: 150px;
     overflow-y: auto;
-    padding-right: 10px;
+    padding: 1.5rem;
     margin-bottom: 1rem;
+    background: rgba(234, 221, 197, 0.15); /* Match textarea background */
+    border: 1px dashed var(--postcard-border);
     scrollbar-width: thin;
     scrollbar-color: var(--postcard-border) transparent;
 }
