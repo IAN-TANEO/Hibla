@@ -117,7 +117,7 @@ const GLOBAL_QUOTES = [
 let lastCueUpdateTime = 0;
 function updateMapTransform() {
     map.style.transform = `translate(${mapX}px, ${mapY}px) scale(${mapScale})`;
-    
+
     // Performance: Throttle the heavy distance calculations
     const now = Date.now();
     if (now - lastCueUpdateTime > 150) {
@@ -225,7 +225,7 @@ viewport.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.thought-dot') || e.target.closest('.quote-banner')) {
         return;
     }
-    
+
     // PINCH TRACKING
     evCache.push(e);
 
@@ -237,7 +237,7 @@ viewport.addEventListener('pointerdown', (e) => {
         initialMapX = mapX; initialMapY = mapY;
         viewport.setPointerCapture(e.pointerId);
         spawnRipple(e.clientX, e.clientY);
-        
+
         // INTERRUPT INERTIA
         if (inertiaFrame) cancelAnimationFrame(inertiaFrame);
         velocityX = 0; velocityY = 0;
@@ -286,7 +286,7 @@ viewport.addEventListener('pointerup', (e) => {
     if (!isDragging) return;
     isDragging = false;
     viewport.releasePointerCapture(e.pointerId);
-    
+
     // START INERTIA if flick is fast enough
     if (Math.abs(velocityX) > INERTIA_THRESHOLD || Math.abs(velocityY) > INERTIA_THRESHOLD) {
         startInertia();
@@ -316,7 +316,7 @@ viewport.addEventListener('wheel', (e) => {
 function adjustZoom(ratio, zoomX, zoomY) {
     if (inertiaFrame) cancelAnimationFrame(inertiaFrame);
     const prevScale = mapScale;
-    
+
     // Multiplicative zoom: maintains constant sensitivity regardless of scale
     mapScale = Math.min(Math.max(0.15, mapScale * ratio), 1.0);
 
@@ -343,11 +343,11 @@ function applyInertia() {
     if (!isDragging) {
         mapX += velocityX;
         mapY += velocityY;
-        
+
         // Friction decay
         velocityX *= FRICTION;
         velocityY *= FRICTION;
-        
+
         updateMapTransform();
 
         // Stop if velocity is negligible
@@ -362,16 +362,16 @@ function applyInertia() {
 
 function handleTap(clientX, clientY) {
     const now = Date.now();
-    
+
     // Close modals on tap outside (if open)
     if ((addModal.classList.contains('active') || viewCard.classList.contains('active')) && (now - modalOpenTime > 300)) {
-        closeModals(); 
+        closeModals();
         return;
     }
 
     // Double tap detection
     const distToLastTap = Math.sqrt((clientX - lastTapCoords.x) ** 2 + (clientY - lastTapCoords.y) ** 2);
-    
+
     if (now - lastTapTime < DOUBLE_TAP_DELAY && distToLastTap < 30) {
         showAddModal(clientX, clientY);
         lastTapTime = 0; // Reset to prevent triple-tap double-modals
@@ -404,8 +404,12 @@ const musicInput = document.getElementById('music-input');
 const searchResults = document.getElementById('search-results');
 const selectedSongDiv = document.getElementById('selected-song');
 
-window.togglePreview = (event, url, overlay) => {
+window.togglePreview = (event, url, overlay, song) => {
     event.stopPropagation();
+
+    // Auto-select the song when previewed (fix for 'missing music' bug)
+    if (song) selectSong(song);
+
     if (previewAudio && previewAudio.src === url) {
         if (previewAudio.paused) {
             previewAudio.play();
@@ -452,7 +456,7 @@ async function fetchVibes() {
     searchResults.innerHTML = '<p style="font-size:0.8rem; color:#a39485; padding:10px;">Finding Relics...</p>';
     searchResults.classList.add('active');
     try {
-        const promises = HARDCODED_SONGS.map(s => 
+        const promises = HARDCODED_SONGS.map(s =>
             fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(s.title + ' ' + s.artist)}&limit=1&entity=song`).then(r => r.json())
         );
         const results = await Promise.all(promises);
@@ -476,15 +480,23 @@ function displayResults(results, isVibe) {
     if (!results.length) return;
     results.forEach(song => {
         const div = document.createElement('div');
-        div.className = 'result-item';
+        const isSelected = selectedSongData && selectedSongData.previewUrl === song.previewUrl;
+        div.className = `result-item ${isSelected ? 'selected-item' : ''}`;
+        div.setAttribute('data-url', song.previewUrl);
+
         div.innerHTML = `
             <div class="art-container">
                 <img src="${song.artworkUrl100}">
-                <div class="play-overlay" onclick="togglePreview(event, '${song.previewUrl}', this)">${PLAY_ICON}</div>
+                <div class="play-overlay">${PLAY_ICON}</div>
             </div>
             <div class="result-name">${song.trackName}</div>
             <div class="result-artist">${song.artistName}</div>
         `;
+
+        // Manual event attachment for better scoping
+        const overlay = div.querySelector('.play-overlay');
+        overlay.onclick = (e) => togglePreview(e, song.previewUrl, overlay, song);
+
         div.onclick = (e) => {
             if (!e.target.closest('.play-overlay')) selectSong(song);
         };
@@ -494,23 +506,90 @@ function displayResults(results, isVibe) {
 }
 
 function selectSong(song) {
-    if (previewAudio) { previewAudio.pause(); previewAudio = null; }
-    selectedSongData = { title: song.trackName, artist: song.artistName, artwork: song.artworkUrl100, previewUrl: song.previewUrl };
+    // Note: previewAudio management stays in togglePreview for modularity
+    selectedSongData = {
+        title: song.trackName,
+        artist: song.artistName,
+        artwork: song.artworkUrl100,
+        artworkMini: song.artworkUrl60,
+        previewUrl: song.previewUrl
+    };
+
     selectedSongDiv.innerHTML = `<div style="display:flex; align-items:center;"><img src="${song.artworkUrl60}" style="width:30px; border-radius:4px; margin-right:10px;"><span>${song.trackName}</span></div><span onclick="removeSong(event)">×</span>`;
     selectedSongDiv.classList.add('active');
-    searchResults.classList.remove('active');
+
+    // VISUAL FEEDBACK: Highlight in list
+    document.querySelectorAll('.result-item').forEach(item => {
+        if (item.getAttribute('data-url') === song.previewUrl) {
+            item.classList.add('selected-item');
+        } else {
+            item.classList.remove('selected-item');
+        }
+    });
 }
 
-window.removeSong = (e) => { e.stopPropagation(); selectedSongData = null; selectedSongDiv.classList.remove('active'); };
+window.removeSong = (e) => {
+    e.stopPropagation();
+    selectedSongData = null;
+    selectedSongDiv.classList.remove('active');
+    document.querySelectorAll('.result-item').forEach(item => item.classList.remove('selected-item'));
+};
 
 // --- DATA ---
 db.collection('spatial_thoughts').onSnapshot((snap) => {
-    document.querySelectorAll('.thought-dot').forEach(d => d.remove());
+    // Clear both dots and their connecting threads
+    document.querySelectorAll('.thought-dot, .thought-thread').forEach(d => d.remove());
+
+    const thoughts = [];
     snap.forEach(doc => {
         const d = doc.data();
+        thoughts.push(d);
         createThoughtDot(d.x, d.y, d.text, d.music);
     });
+
+    // Draw Threads Between Dots (Constellation Logic)
+    // Connecting each dot to its nearest neighbor if close enough
+    const connections = new Set();
+
+    for (let i = 0; i < thoughts.length; i++) {
+        let minDist = Infinity;
+        let nearestIdx = -1;
+        const p1 = thoughts[i];
+
+        for (let j = 0; j < thoughts.length; j++) {
+            if (i === j) continue;
+            const p2 = thoughts[j];
+            const d = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+            if (d < minDist) {
+                minDist = d;
+                nearestIdx = j;
+            }
+        }
+
+        // Connect if neighbor found and distance is reasonable (e.g. 1500px threshold)
+        if (nearestIdx !== -1 && minDist < 1500) {
+            const pairId = [i, nearestIdx].sort().join('-');
+            if (!connections.has(pairId)) {
+                createThoughtThread(thoughts[i], thoughts[nearestIdx]);
+                connections.add(pairId);
+            }
+        }
+    }
 });
+
+function createThoughtThread(p1, p2) {
+    const dx = p2.x - p1.x; const dy = p2.y - p1.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+    const str = document.createElement('div');
+    str.className = 'thought-thread';
+    str.style.width = `${length}px`;
+    str.style.left = `${p1.x}px`; str.style.top = `${p1.y}px`;
+    str.style.transform = `rotate(${angle}deg)`;
+    str.style.animationDelay = `${Math.random() * 5}s`;
+    map.appendChild(str);
+}
 
 function createThoughtDot(x, y, text, music) {
     const dot = document.createElement('div');
@@ -526,8 +605,9 @@ function showThought(text, music, author = "") {
     else thoughtDisplay.textContent = text;
     document.getElementById('player-anchor').innerHTML = '';
     if (author) {
-        const a = document.createElement('span');
-        a.className = 'attribution'; a.innerText = `— ${author}`;
+        const a = document.createElement('div');
+        a.className = 'attribution';
+        a.innerHTML = `— ${author}`;
         document.getElementById('player-anchor').appendChild(a);
     }
     if (currentAudio) { currentAudio.pause(); currentAudio = null; }
@@ -571,12 +651,16 @@ submitBtn.onclick = async () => {
     closeModals();
 };
 
-creditsBtn.onclick = () => showThought(`<div style="text-align:left;"><p>Inspired by <strong>amapof.us</strong> & <strong>Sulyap</strong>.</p></div>`, null, "Jan Iyan");
+creditsBtn.onclick = () => showThought(
+    `<div style="text-align:left;"><p>Inspired by <strong>amapof.us</strong> & <strong>Sulyap</strong>.</p></div>`, 
+    null, 
+    "Jan Ian Tans<span>Hibla Creator</span>"
+);
 
 function spawnRipple(x, y) {
     const r = document.createElement('div'); r.className = 'ripple';
     const rect = map.getBoundingClientRect();
-    r.style.left = `${(x - rect.left) / mapScale}px`; 
+    r.style.left = `${(x - rect.left) / mapScale}px`;
     r.style.top = `${(y - rect.top) / mapScale}px`;
     map.appendChild(r);
     setTimeout(() => r.remove(), 1000);
