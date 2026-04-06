@@ -1,6 +1,0 @@
-# Hibla: Relic - Secret Management
-# Ignore configuration files with sensitive API keys
-config.js
-firebase.config
-node_modules/
-.DS_Store
