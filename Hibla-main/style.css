@@ -1,0 +1,568 @@
+:root {
+    --bg-paper: #eaddc5;
+    --relic-ink: rgba(74, 59, 50, 0.85);
+    --relic-crack: rgba(139, 94, 60, 0.08);
+    --relic-burn: rgba(40, 20, 10, 0.8);
+    --accent-ember: #ff4d00;
+    --ember-glow: rgba(255, 77, 0, 0.6);
+    --postcard-bg: #fffaf0;
+    --postcard-border: #e0d4c3;
+    --text-header: #4a3b32;
+    --text-body: #5c4a3d;
+    --ripple-color: rgba(213, 195, 170, 0.4);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-paper);
+}
+
+/* FINAL RELIC OVERHAUL: Burnt Edge Vignette */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    /* Heavy charred vignette */
+    background: radial-gradient(circle, transparent 40%, var(--relic-burn) 100%);
+    mix-blend-mode: multiply; /* Charred effect */
+    pointer-events: none;
+    z-index: 9999;
+}
+
+#viewport {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    cursor: crosshair;
+    touch-action: none; /* STOPS Android stickiness */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#map {
+    width: 8000px;
+    height: 8000px;
+    background-color: var(--bg-paper);
+    /* ORGANIC CRACKS: Sparse & Irregular */
+    background-image: 
+        /* Fine paper grain */
+        radial-gradient(rgba(180, 160, 140, 0.15) 1.2px, transparent 1.2px),
+        /* Individual large fractures (not repeating) */
+        linear-gradient(115deg, transparent 40%, var(--relic-crack) 40.1%, var(--relic-crack) 40.3%, transparent 40.4%),
+        linear-gradient(240deg, transparent 65%, var(--relic-crack) 65.1%, var(--relic-crack) 65.3%, transparent 65.4%),
+        /* Aged stains */
+        radial-gradient(circle at 20% 30%, rgba(139, 94, 60, 0.04) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(139, 94, 60, 0.04) 0%, transparent 50%);
+    background-size: 60px 60px, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
+    position: absolute;
+    transform-origin: 0 0;
+    will-change: transform;
+    transition: transform 0.1s ease-out;
+    z-index: 1;
+}
+
+/* THOUGHT DOTS: Glowing Embers / Bleeding Ink */
+.thought-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: var(--accent-ember);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    box-shadow: 0 0 10px 2px var(--ember-glow);
+    animation: ember-pulse 3s infinite alternate ease-in-out;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 500; /* Priority over Web */
+}
+
+@keyframes ember-pulse {
+    0% { 
+        transform: translate(-50%, -50%) scale(0.8); 
+        opacity: 0.6; 
+        filter: blur(2px); /* Ink bleed start */
+    }
+    100% { 
+        transform: translate(-50%, -50%) scale(1.1); 
+        opacity: 1; 
+        filter: blur(0px);
+        box-shadow: 0 0 20px 6px var(--ember-glow);
+    }
+}
+
+.thought-dot:hover {
+    transform: translate(-50%, -50%) scale(1.6);
+    z-index: 110;
+}
+
+/* WISDOM WEB: Hand-Torn Banners */
+.quote-banner {
+    position: absolute;
+    padding: 0.6rem 1.2rem;
+    background: #fffaf0;
+    border: 1px solid rgba(74, 59, 50, 0.15);
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 400; /* Above Strings/Cracks */
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--text-header);
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+    /* Torn edge effect */
+    clip-path: polygon(
+        0% 5%, 5% 0%, 95% 0%, 100% 5%, 
+        100% 92%, 96% 100%, 8% 100%, 0% 94%
+    );
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.quote-banner:hover {
+    transform: translate(-50%, -50%) scale(1.05) rotate(1deg);
+    background: #fff;
+    box-shadow: 4px 4px 15px rgba(0,0,0,0.1);
+    z-index: 60;
+}
+
+/* WEB STRINGS: Breathing Ink Threads */
+.connection-string {
+    position: absolute;
+    height: 1px;
+    background: transparent;
+    border-top: 1px dashed rgba(0, 0, 0, 0.45); /* Thin Black String */
+    opacity: 0.6; /* Made visible */
+    transform-origin: 0 50%;
+    z-index: 40;
+    pointer-events: none !important; 
+    animation: string-pulse 8s infinite alternate ease-in-out;
+}
+
+@keyframes string-pulse {
+    0% { opacity: 0.3; }
+    100% { opacity: 0.7; }
+}
+
+.glass-panel {
+    background: var(--postcard-bg);
+    border: 1px solid var(--postcard-border);
+    border-radius: 4px;
+    color: var(--text-body);
+    padding: 2.5rem;
+    box-shadow: 2px 8px 32px rgba(40, 20, 10, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: 90vh; /* Increased to allow more room */
+    overflow-y: hidden; /* We'll scroll the content instead */
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollable container for text inside the card */
+.thought-scroll-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--postcard-border) transparent;
+}
+
+/* Custom Relic Scrollbar */
+.glass-panel::-webkit-scrollbar, .thought-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.glass-panel::-webkit-scrollbar-track, .thought-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.glass-panel::-webkit-scrollbar-thumb, .thought-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--postcard-border);
+    border-radius: 10px;
+}
+.glass-panel::-webkit-scrollbar-thumb:hover, .thought-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-body);
+}
+
+#add-modal.active, #view-card.active, .glass-panel.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: all;
+}
+
+#add-modal, #view-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -45%) scale(0.95);
+    width: 90%;
+    max-width: 500px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+}
+
+h2 {
+    font-family: 'Playfair Display', serif;
+    color: var(--text-header);
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    border-bottom: 1px solid var(--postcard-border);
+}
+
+textarea, p.thought-text {
+    font-family: 'Caveat', cursive;
+    font-size: 26px;
+    color: var(--text-body);
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap; /* Preserves newlines */
+}
+
+textarea {
+    width: 100%;
+    height: 150px;
+    background: rgba(234, 221, 197, 0.2);
+    border: 1px dashed var(--postcard-border);
+    padding: 1.5rem;
+    resize: none;
+    outline: none;
+    margin-bottom: 1rem;
+    overflow-y: auto;
+}
+
+.attribution {
+    display: block;
+    text-align: right;
+    margin-top: 1rem;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: rgba(74, 59, 50, 0.6);
+}
+
+/* MUSIC SECTION (Horizontal Messenger Style) */
+.music-section {
+    margin-bottom: 1.5rem;
+}
+
+#music-input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--postcard-border);
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+}
+
+.search-results {
+    width: 100%;
+    display: none;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 1rem 0;
+    gap: 0.8rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.search-results.active {
+    display: flex;
+}
+
+.result-item {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 110px;
+    padding: 0.8rem;
+    background: #fff;
+    border: 1px solid var(--postcard-border);
+    border-radius: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.art-container {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    margin-bottom: 0.5rem;
+}
+
+.art-container img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
+
+.play-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1; /* Always visible for discovery */
+}
+
+.play-overlay svg {
+    width: 20px;
+    height: 20px;
+    fill: #fff;
+}
+
+.result-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.result-artist {
+    font-size: 0.65rem;
+    color: #a39485;
+}
+
+.selected-song {
+    margin-top: 0.5rem;
+    padding: 0.8rem;
+    background: #fdfaf5;
+    border: 1px solid var(--postcard-border);
+    border-radius: 4px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.selected-song.active {
+    display: flex;
+}
+
+/* MINI PLAYER */
+.mini-player {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #fdfaf5;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--postcard-border);
+}
+
+.player-art {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    margin-right: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.player-meta { flex-grow: 1; }
+.player-title { font-size: 0.95rem; font-weight: 700; color: var(--text-header); }
+.player-artist { font-size: 0.8rem; color: #a39485; }
+
+.player-controls {
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border-radius: 50%;
+    border: 1px solid var(--postcard-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.player-controls svg { width: 22px; height: 22px; fill: var(--text-header); }
+
+/* HUD & CREDITS */
+#hud {
+    position: fixed;
+    top: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(234, 221, 197, 0.9);
+    padding: 0.6rem 1.2rem;
+    padding-top: calc(0.6rem + env(safe-area-inset-top, 0px));
+    border: 1px solid var(--postcard-border);
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    z-index: 8000;
+    opacity: 0.5; /* Lighter by default */
+    transition: opacity 0.5s;
+    pointer-events: none;
+}
+
+#credits-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 50px;
+    height: 50px;
+    background: #f4eedc;
+    border: 1px solid var(--postcard-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 8000;
+}
+
+.btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--text-header);
+    color: #fff;
+    border: none;
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+/* MOBILE REFINEMENTS */
+@media (max-width: 768px) {
+    textarea, p.thought-text { font-size: 22px; }
+    h2 { font-size: 1.6rem; }
+    .glass-panel { padding: 1.5rem; width: 95%; }
+    #add-modal, #view-card { max-width: 95%; }
+    #hud { font-size: 0.75rem; top: 0.5rem; }
+    #credits-btn { bottom: 1.5rem; right: 1.5rem; width: 44px; height: 44px; }
+}
+
+.close-hint {
+    margin-top: 1.5rem;
+    font-size: 0.7rem;
+    color: #a39485;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.ripple {
+    position: absolute;
+    border: 1px solid var(--ripple-color);
+    background: radial-gradient(circle, var(--ripple-color) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+    animation: rippleEffect 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes rippleEffect {
+    to { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+}
+
+/* IMPACTFUL LANDING SCREEN */
+#landing-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: var(--bg-paper);
+    background-image: 
+        radial-gradient(rgba(180, 160, 140, 0.15) 1.2px, transparent 1.2px),
+        linear-gradient(115deg, transparent 40%, var(--relic-crack) 40.1%, var(--relic-crack) 40.3%, transparent 40.4%),
+        linear-gradient(240deg, transparent 65%, var(--relic-crack) 65.1%, var(--relic-crack) 65.3%, transparent 65.4%);
+    background-size: 60px 60px, 100% 100%, 100% 100%;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 1.5s ease-in-out;
+}
+
+.landing-vignette {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle, transparent 30%, rgba(60, 40, 30, 0.45) 100%);
+    mix-blend-mode: multiply;
+    pointer-events: none;
+}
+
+.landing-content {
+    text-align: center;
+    position: relative;
+    z-index: 10001;
+}
+
+.landing-text {
+    margin: 0;
+    opacity: 0;
+    color: var(--text-header);
+    transition: all 1s ease-in-out;
+    filter: blur(5px);
+}
+
+#landing-welcome {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+}
+
+#landing-title {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: clamp(4rem, 15vw, 10rem);
+    letter-spacing: 0.5em;
+    margin-right: -0.5em; /* Compensate for horizontal letter-spacing */
+    color: #433328;
+    text-shadow: 0 0 40px rgba(180, 160, 140, 0.3);
+    display: none; /* Controlled via script */
+}
+
+/* RESPONSIVE HIBLA TOWER FOR MOBILE */
+@media (max-width: 768px) {
+    #landing-title {
+        display: none; /* Still hidden initially */
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        letter-spacing: 0;
+        margin-right: 0;
+        line-height: 1.1;
+        /* Special vertical stacking trick */
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        letter-spacing: 0.2em;
+    }
+}
+
+/* Specific Animation States */
+.landing-text.visible {
+    opacity: 1 !important;
+    filter: blur(0) !important;
+}
+
+.landing-text.fading {
+    opacity: 0 !important;
+    filter: blur(15px) !important;
+    transform: scale(0.9) translate(-50%, -50%) !important;
+}
+
+#landing-screen.exit {
+    opacity: 0 !important;
+    pointer-events: none;
+}
