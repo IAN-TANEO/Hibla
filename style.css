@@ -164,7 +164,36 @@ body::after {
     opacity: 0;
     visibility: hidden;
     transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: 90vh;
+    overflow-y: hidden;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollable container for text inside the card */
+.thought-scroll-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--postcard-border) transparent;
+}
+
+/* Custom Relic Scrollbar */
+.glass-panel::-webkit-scrollbar, .thought-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.glass-panel::-webkit-scrollbar-track, .thought-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.glass-panel::-webkit-scrollbar-thumb, .thought-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--postcard-border);
+    border-radius: 10px;
+}
+.glass-panel::-webkit-scrollbar-thumb:hover, .thought-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-body);
 }
 
 .glass-panel.active {
@@ -198,6 +227,8 @@ textarea, p.thought-text {
     font-size: 26px;
     color: var(--text-body);
     line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 textarea {
@@ -209,6 +240,7 @@ textarea {
     resize: none;
     outline: none;
     margin-bottom: 1rem;
+    overflow-y: auto;
 }
 
 .attribution {

@@ -37,8 +37,8 @@ let modalOpenTime = 0;
 const CLICK_DEADZONE = 10;
 const DOUBLE_TAP_DELAY = 300;
 let lastTapTime = 0;
-let lastTapPos = { x: 0, y: 0 };
 let currentClickPos = { x: 0, y: 0 };
+let lastTapCoords = { x: 0, y: 0 };
 let selectedSongData = null;
 let searchTimeout = null;
 let currentAudio = null; // Active thought audio
@@ -288,18 +288,31 @@ function adjustZoom(amount, zoomX, zoomY) {
 
 function handleTap(clientX, clientY) {
     const now = Date.now();
+    
+    // Close modals on tap outside (if open)
     if ((addModal.classList.contains('active') || viewCard.classList.contains('active')) && (now - modalOpenTime > 300)) {
-        closeModals(); return;
+        closeModals(); 
+        return;
     }
-    if (now - lastTapTime < DOUBLE_TAP_DELAY) {
+
+    // Double tap detection
+    const distToLastTap = Math.sqrt((clientX - lastTapCoords.x) ** 2 + (clientY - lastTapCoords.y) ** 2);
+    
+    if (now - lastTapTime < DOUBLE_TAP_DELAY && distToLastTap < 30) {
         showAddModal(clientX, clientY);
+        lastTapTime = 0; // Reset to prevent triple-tap double-modals
+    } else {
+        lastTapTime = now;
+        lastTapCoords = { x: clientX, y: clientY };
     }
-    lastTapTime = now;
 }
 
 function showAddModal(clientX, clientY) {
-    currentClickPos.x = clientX - mapX;
-    currentClickPos.y = clientY - mapY;
+    // FIX: Use actual visual position (getBoundingClientRect) to handle transitions/zoom accurately
+    const rect = map.getBoundingClientRect();
+    currentClickPos.x = (clientX - rect.left) / mapScale;
+    currentClickPos.y = (clientY - rect.top) / mapScale;
+
     addModal.style.display = 'block';
     setTimeout(() => addModal.classList.add('active'), 10);
     modalOpenTime = Date.now();
@@ -457,7 +470,11 @@ function showThought(text, music, author = "") {
         document.getElementById('player-anchor').appendChild(player);
     }
     viewCard.style.display = 'block';
-    setTimeout(() => viewCard.classList.add('active'), 10);
+    setTimeout(() => {
+        viewCard.classList.add('active');
+        const scroller = viewCard.querySelector('.thought-scroll-container');
+        if (scroller) scroller.scrollTop = 0;
+    }, 10);
     modalOpenTime = Date.now();
 }
 
@@ -485,7 +502,8 @@ creditsBtn.onclick = () => showThought(`<div style="text-align:left;"><p>Inspire
 function spawnRipple(x, y) {
     const r = document.createElement('div'); r.className = 'ripple';
     const rect = map.getBoundingClientRect();
-    r.style.left = `${x - rect.left}px`; r.style.top = `${y - rect.top}px`;
+    r.style.left = `${(x - rect.left) / mapScale}px`; 
+    r.style.top = `${(y - rect.top) / mapScale}px`;
     map.appendChild(r);
     setTimeout(() => r.remove(), 1000);
 }
