@@ -616,7 +616,9 @@ function showThought(text, music, author = "") {
     if (music) {
         const player = document.createElement('div'); player.className = 'mini-player';
         player.innerHTML = `<img src="${music.artwork}" class="player-art"><div class="player-meta"><div class="player-title">${music.title}</div><div class="player-artist">${music.artist}</div></div><div class="player-controls" id="play-pause-btn">${PAUSE_ICON}</div>`;
-        const audio = new Audio(music.previewUrl); currentAudio = audio;
+        const audio = new Audio(music.previewUrl); 
+        audio.loop = true; // <--- ADD THIS LINE
+        currentAudio = audio;
         const btn = player.querySelector('#play-pause-btn');
         btn.onclick = (e) => { e.stopPropagation(); if (audio.paused) { audio.play(); btn.innerHTML = PAUSE_ICON; } else { audio.pause(); btn.innerHTML = PLAY_ICON; } };
         audio.onended = () => btn.innerHTML = PLAY_ICON;
